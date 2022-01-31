@@ -70,36 +70,13 @@
         <defaultGoal>install</defaultGoal>
 
         <plugins>
-          <plugin>
-            <groupId>org.codehaus.mojo</groupId>
-            <artifactId>exec-maven-plugin</artifactId>
-            <version>3.0.0</version>
-            <executions>
-              <execution>
-                <goals>
-                  <goal>java</goal>
-                </goals>
-              </execution>
-            </executions>
-            <configuration>
-              <mainClass>com.example.Main</mainClass>
-              <arguments>
-              </arguments>
-              <systemProperties>
-                <systemProperty>
-                  <key>javax.net.debug</key>
-                  <value>all</value>
-                </systemProperty>
-              </systemProperties>
-            </configuration>
-          </plugin>
             <!-- Compiler plugin enforces Java 1.7 compatibility and activates annotation processors -->
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.3</version>
                 <configuration>
-                    <source>1.7</source>
-                    <target>1.7</target>
+                    <source>1.8</source>
+                    <target>1.8</target>
                 </configuration>
             </plugin>
 
