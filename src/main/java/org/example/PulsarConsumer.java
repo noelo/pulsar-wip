@@ -9,7 +9,7 @@ public class PulsarConsumer {
         PulsarClient client = PulsarClient.builder()
                 .allowTlsInsecureConnection(Boolean.TRUE)
                 .enableTlsHostnameVerification(Boolean.FALSE)
-                .tlsTrustCertsFilePath("/home/noelo/dev/noc-pulsar-client/pulsar-proxy-chain.pem")
+                .tlsTrustCertsFilePath("./pulsar-proxy-chain.pem")
                 .serviceUrl("pulsar+ssl://sslproxy-route-pulsar.apps.ocp.themadgrape.com:443")
                 .enableTcpNoDelay(Boolean.TRUE)
                 .build();
