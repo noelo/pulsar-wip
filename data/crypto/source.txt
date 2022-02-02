@@ -1,0 +1,24 @@
+Downloaded from https://www.kaggle.com/yamqwe/ks-cryptocurrency-price-by-day-hr-2013-2018-w-bie
+
+Date Pulled: 2/09/2018 12:10pm
+
+Data Pulled From: https://coinmarketcap.com
+Resources
+
+A special thanks to The Concept Center for pulling the data and writing a simple research study
+
+This dataset was created by Chase Willden and contains around 2000 samples along with Volume (24hr), Symbol, technical information and other features such as:
+
+    Price
+    Name
+    and more.
+
+How to use this dataset
+
+        Analyze Market Cap in relation to Circulating Supply
+        Study the influence of 24h on 7d
+        More datasets
+
+    Acknowledgements
+
+    If you use this dataset in your research, please credit Chase Willden

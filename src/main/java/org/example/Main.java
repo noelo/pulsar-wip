@@ -15,19 +15,20 @@
  */
 package org.example;
 
+import com.opencsv.exceptions.CsvValidationException;
 import org.apache.pulsar.client.api.PulsarClientException;
+import org.example.deprecated.PulsarConsumer;
+import org.example.deprecated.PulsarProducer;
+import org.example.io.CryptoCurrencyDataProducer;
+import org.example.io.CryptoPricesDataProducer;
 
+import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 
 public class Main {
 
-    public static void main(String[] args) throws InterruptedException, PulsarClientException, ExecutionException {
-        if (args.length == 0)
-            System.out.println("(P)roducer or (C)onsumer");
-        else if (args[0].startsWith("P")) {
-            PulsarProducer x = new PulsarProducer();
-        } else {
-            PulsarConsumer x = new PulsarConsumer();
-        }
+    public static void main(String[] args) throws InterruptedException, IOException, ExecutionException, CsvValidationException {
+            CryptoCurrencyDataProducer cc = new CryptoCurrencyDataProducer("persistent://public/default/currency","data/crypto/All_Currencies_Table.csv");
+            CryptoPricesDataProducer cp = new CryptoPricesDataProducer("persistent://public/default/prices","data/crypto/Cryptocurrency_Prices_by_Date.csv");
     }
 }
