@@ -1,7 +1,6 @@
 package org.example.io;
 
 import com.opencsv.bean.CsvToBeanBuilder;
-import com.opencsv.bean.exceptionhandler.CsvExceptionHandler;
 import com.opencsv.exceptions.CsvValidationException;
 
 import java.io.FileReader;

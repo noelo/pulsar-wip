@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.client.api.Producer;
 import org.apache.pulsar.client.api.ProducerStats;
 import org.apache.pulsar.client.api.PulsarClient;
+import org.apache.pulsar.client.api.schema.SchemaDefinition;
 import org.apache.pulsar.client.impl.schema.JSONSchema;
 import org.example.schema.CryptoPricesSchema;
 
@@ -19,20 +20,10 @@ import static org.example.schema.CryptoPricesSchema.ROUTING_KEY;
 @Slf4j
 public class CryptoPricesDataProducer {
 
-    public CryptoPricesDataProducer(String TopicName, String pricesFilename) throws IOException, ExecutionException, InterruptedException, CsvValidationException {
-        log.info("Initialising client");
-        PulsarClient client = PulsarClient.builder()
-                .allowTlsInsecureConnection(Boolean.TRUE)
-                .enableTlsHostnameVerification(Boolean.FALSE)
-                .tlsTrustCertsFilePath("./pulsar-proxy-chain.pem")
-                .serviceUrl("pulsar+ssl://sslproxy-route-pulsar.apps.ocp.themadgrape.com:443")
-                .enableTcpNoDelay(Boolean.TRUE)
-                .statsInterval(5, TimeUnit.MINUTES)
-                .build();
+    public CryptoPricesDataProducer(PulsarClient client, String TopicName, String pricesFilename) throws IOException, ExecutionException, InterruptedException, CsvValidationException {
 
         log.info("Initialising Producer<CryptoCurrencySchema>");
         Producer<CryptoPricesSchema> pulsarProducerPrices = client.newProducer(JSONSchema.of(CryptoPricesSchema.class))
-
                 .producerName("CryptoProducer")
                 .topic(TopicName)
                 .enableBatching(Boolean.TRUE)
@@ -48,11 +39,12 @@ public class CryptoPricesDataProducer {
         long startTs = System.currentTimeMillis();
         log.info("Writing CryptoPricesSchema records to pulsar");
         pdata.forEach(row -> {
+            log.debug("row {}",row);
             pulsarProducerPrices
                     .newMessage().value(row)
-                    .key(row.getcurrency())
-                    .property(ROUTING_KEY,row.getcurrency())
-                    .eventTime(row.getTS())
+                    .key(row.getCurrency())
+                    .property(ROUTING_KEY,row.getCurrency())
+                    .eventTime(row.getDateTS())
                     .sendAsync()
                     .thenAccept(msgId -> {});
 
@@ -71,7 +63,7 @@ public class CryptoPricesDataProducer {
 
         CompletableFuture<Void> clfuture2 = pulsarProducerPrices.closeAsync();
         clfuture2.get();
-        client.close();
+//        client.close();
         log.debug("Close completed");
     }
 }

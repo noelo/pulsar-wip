@@ -17,16 +17,16 @@ import java.util.stream.Stream;
 @Slf4j
 public class CryptoCurrencyDataProducer {
 
-    public CryptoCurrencyDataProducer(String TopicName, String currencyFilename) throws IOException, ExecutionException, InterruptedException, CsvValidationException {
-        log.info("Initialising client");
-        PulsarClient client = PulsarClient.builder()
-                .allowTlsInsecureConnection(Boolean.TRUE)
-                .enableTlsHostnameVerification(Boolean.FALSE)
-                .tlsTrustCertsFilePath("./pulsar-proxy-chain.pem")
-                .serviceUrl("pulsar+ssl://sslproxy-route-pulsar.apps.ocp.themadgrape.com:443")
-                .enableTcpNoDelay(Boolean.TRUE)
-                .statsInterval(5, TimeUnit.MINUTES)
-                .build();
+    public CryptoCurrencyDataProducer(PulsarClient client, String TopicName, String currencyFilename) throws IOException, ExecutionException, InterruptedException, CsvValidationException {
+//        log.info("Initialising client");
+//        PulsarClient client = PulsarClient.builder()
+//                .allowTlsInsecureConnection(Boolean.TRUE)
+//                .enableTlsHostnameVerification(Boolean.FALSE)
+//                .tlsTrustCertsFilePath("./certs/pulsar-proxy-chain.pem")
+//                .serviceUrl("pulsar+ssl://sslproxy-route-pulsar.apps.ocp.themadgrape.com:443")
+//                .enableTcpNoDelay(Boolean.TRUE)
+//                .statsInterval(5, TimeUnit.MINUTES)
+//                .build();
 
         log.info("Initialising Producer<CryptoCurrencySchema>");
         Producer<CryptoCurrencySchema> pulsarProducerCurrency = client.newProducer(JSONSchema.of(CryptoCurrencySchema.class))
@@ -68,7 +68,7 @@ public class CryptoCurrencyDataProducer {
 
         CompletableFuture<Void> clfuture = pulsarProducerCurrency.closeAsync();
         clfuture.get();
-        client.close();
+//        client.close();
         log.debug("Close completed...");
     }
 }

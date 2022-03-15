@@ -1,18 +1,32 @@
 package org.example.schema;
 
-import com.opencsv.bean.CsvBindByName;
 import com.opencsv.bean.CsvBindByPosition;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.NoArgsConstructor;
 import org.apache.pulsar.shade.com.fasterxml.jackson.annotation.JsonAutoDetect;
 import org.apache.pulsar.shade.com.fasterxml.jackson.annotation.JsonIgnore;
 
-@Builder
-@AllArgsConstructor
-@NoArgsConstructor
+import java.io.Serializable;
+
+//@Builder
+//@AllArgsConstructor
+//@NoArgsConstructor
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
-public class CryptoCurrencySchema {
+public class CryptoCurrencySchema implements Serializable {
+
+    public CryptoCurrencySchema() {
+    }
+
+    public CryptoCurrencySchema(String number, String name, String symbol, float marketCap, float price, float circulatingSupply, float volume24hr, float volume1h, float volume24h, float volume7d) {
+        Number = number;
+        Name = name;
+        Symbol = symbol;
+        MarketCap = marketCap;
+        Price = price;
+        CirculatingSupply = circulatingSupply;
+        Volume24hr = volume24hr;
+        Volume1h = volume1h;
+        Volume24h = volume24h;
+        Volume7d = volume7d;
+    }
 
     @CsvBindByPosition(position = 0)
     String Number;
@@ -24,7 +38,7 @@ public class CryptoCurrencySchema {
     String Symbol;
 
     @JsonIgnore
-    public String getSymbol(){
+    public String getSymbol() {
         return this.Symbol;
     }
 
