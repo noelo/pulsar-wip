@@ -1,0 +1,147 @@
+helm repo add apachepulsar https://pulsar.apache.org/charts
+helm repo update
+helm show values apachepulsar/pulsar > pulsar-values.yaml
+
+Create pulsar project
+Add cert-manager 1.6.1+
+oc adm policy add-scc-to-user anyuid -z default -z pulsar-broker-acct -z pulsar-functions-worker -z pulsar-prometheus -z pulsar-bookie -z pulsar-zookeeper -z pulsar-proxy -n pulsar
+helm install pulsar apachepulsar/pulsar -f pulsar-values-dev.yaml --timeout 10m 
+
+*** NOTE : The Pulsar helm chart has issues with the cer-manager resources. See https://github.com/apache/pulsar/issues/14547
+If this is an issue during the helm install phase
+[1] helm template --debug pulsar apachepulsar/pulsar -f pulsar-values-dev.yaml > render.yaml
+[2] edit the render.yaml to fix the cert definitions and the use oc apply to install the render.yaml
+
+
+Setup pulsar manager login
+CSRF_TOKEN=$(curl http://pulsar-mini-pulsar-manager-pulsar....../pulsar-manager/csrf-token)
+
+
+curl \
+   -H 'X-XSRF-TOKEN: $CSRF_TOKEN' \
+   -H 'Cookie: XSRF-TOKEN=$CSRF_TOKEN;' \
+   -H "Content-Type: application/json" \
+   -X PUT http://pulsar-mini-pulsar-manager-pulsar....../pulsar-manager/users/superuser \
+   -d '{"name": "admin", "password": "apachepulsar", "description": "test", "email": "username@test.org"}'
+
+oc expose svc pulsar-grafana
+oc get secret -o yaml pulsar-grafana-secret
+oc expose svc pulsar-pulsar-manager
+oc create route passthrough sslproxy-route --service=pulsar-proxy --port=6651
+
+
+Configure Pulsar Manager - service url = http://pulsar-broker:8080
+
+Get the SSL certificate to connect to the proxy 
+openssl s_client -showcerts -servername sslproxy-route-pulsar.apps.ocp.themadgrape.com -connect sslproxy-route-pulsar.apps.ocp.themadgrape.com:443
+
+
+Install Presto cluster
+---------------------
+cd config
+oc create cm pulsar-sql-catalog --from-file=pulsar.properties
+
+cd coord-node/
+oc create cm pulsar-sql-coord --from-file=jvm.config --from-file=log.properties --from-file=config.properties
+oc apply -f pulsar-sql-ss-coord.yaml 
+oc apply -f pulsar-sql-svc-coord.yml 
+oc expose svc pulsar-sql-coord
+
+cd worker-node/
+oc create cm pulsar-sql-worker --from-file=jvm.config --from-file=log.properties --from-file=config.properties
+oc apply -f pulsar-sql-ss-worker.yaml 
+oc apply -f pulsar-sql-svc-worker.yml 
+
+
+oc rsh pulsar-toolset-0 ./bin/pulsar sql --server pulsar-sql-coord:8081
+./bin/pulsar sql --server pulsar-sql-coord:8081
+SELECT * FROM system.runtime.nodes;
+show catalogs;
+show schemas in pulsar;
+show tables in pulsar."public/default";
+select count(*) from pulsar."public/default".prices;
+history;
+show columns  from pulsar."public/default".prices;
+select max(price) from pulsar."public/default".prices;
+select * from pulsar."public/default".prices group by currency limit 1 order by price desc;
+select currency,count(currency)  from pulsar."public/default".prices group by currency;
+select currency,count(currency) as ccount  from pulsar."public/default".prices group by currency order by ccount;
+select currency,count(currency) as ccount  from pulsar."public/default".prices group by currency order by ccount desc;
+select currency,count(currency) as ccount, avg(price) as price  from pulsar."public/default".prices group by currency order by ccount desc;
+select currency,count(currency) as ccount, avg(price) as price, round(sum(price),1) as total  from pulsar."public/default".prices group by currency order by total  desc;
+select * from pulsar."public/default".prices where  __event_time__ > timestamp '2018-02-09 16:44:15.000' order by __event_time__ asc;
+
+********************
+* Pulsar Functions *
+********************
+oc cp function/target/demo-pulsar-function-1.0-SNAPSHOT.jar pulsar-toolset-0:/tmp
+
+oc rsh pulsar-toolset-0 /pulsar/bin/pulsar-admin functions create --tenant public --namespace default --name symbolrouter --inputs prices --classname org.example.pulsar.functions.SymbolRouter --jar /tmp/demo-pulsar-function-1.0-SNAPSHOT.jar
+
+oc rsh pulsar-toolset-0 /pulsar/bin/pulsar-admin functions list
+/pulsar/bin/pulsar-admin functions get --name symbolrouter
+/pulsar/bin/pulsar-admin functions status --name symbolrouter
+/pulsar/bin/pulsar-admin functions stats --name symbolrouter
+oc rsh pulsar-toolset-0 /pulsar/bin/pulsar-admin functions delete --name symbolrouter
+
+./pulsar-admin topics list public/default
+
+oc rsh pulsar-toolset-0 /pulsar/bin/pulsar-admin topics stats persistent://public/default/FixedDataTopic
+
+oc rsh pulsar-toolset-0 /pulsar/bin/pulsar-admin broker-stats destinations
+
+oc rsh pulsar-toolset-0 /pulsar/bin/pulsar-admin broker-stats monitoring-metrics
+
+oc rsh pulsar-mini-toolset-0 /pulsar/bin/pulsar-admin functions create --tenant public --namespace default --name symbolrouter --inputs FixedDataTopic 
+        --classname org.example.pulsar.functions.SymbolRouter --jar /tmp/demo-pulsar-function-1.0-SNAPSHOT.jar
+
+********************************************************************************************************************
+TRASH : working notes
+********************************************************************************************************************
+
+oc create cm pulsar-sql --from-file=jvm.config --from-file=log.properties --from-file=config.properties
+oc create cm pulsar-sql-catalog --from-file=pulsar.properties
+
+oc set volumes --add statefulset/pulsar-sql -t configmap -m /opt/pulsar-presto/config --configmap-name='pulsar-sql' --name="pulsar-config"
+oc set volumes --add statefulset/pulsar-sql-coord -t configmap -m /opt/pulsar-presto/config/catalog --configmap-name='pulsar-sql-catalog' --name="pulsar-catalog"
+oc set env statefulset/pulsar-sql PULSAR_PRESTO_CONF=/opt/pulsar-presto/config
+
+
+openssl x509 -in pulsar-proxy.pem -noout -text
+
+keytool -import -alias madgrape -keystore cacerts -file apps-ocp-themadgrape-com.pem
+
+./pulsar-client --proxy-protocol SNI --url pulsar://pulsar-broker --proxy-url pulsar+ssl://proxy-route-pulsar.apps.ocp.themadgrape.com:443 produce test-topic --messages "hello world"
+
+
+./pulsar-client --proxy-protocol SNI --url pulsar+ssl://proxy-route-pulsar.apps.ocp.themadgrape.com:443 produce test-topic --messages "hello world"
+
+
+./pulsar-client --proxy-protocol SNI --url pulsar://proxy-route-pulsar.apps.ocp.themadgrape.com:443 produce test-topic --messages "hello world"
+
+./pulsar-client --proxy-url pulsar://proxy-route-pulsar.apps.ocp.themadgrape.com:443 produce test-topic --messages "hello world"
+
+
+./pulsar-client --proxy-protocol SNI --url pulsar://broker-route-pulsar.apps.ocp.themadgrape.com --proxy-url pulsar+ssl://proxy-route-pulsar.apps.ocp.themadgrape.com:443 produce test-topic --messages "hello world"
+
+
+
+
+oc create route passthrough sslproxy-route --service=pulsar-proxy --port=6651        
+
+PulsarClient client = PulsarClient.builder()
+                .allowTlsInsecureConnection(Boolean.TRUE)
+                .enableTlsHostnameVerification(Boolean.FALSE)
+                .tlsTrustCertsFilePath("/home/noelo/dev/noc-pulsar-client/pulsar-proxy-chain.pem")
+                .serviceUrl("pulsar+ssl://sslproxy-route-pulsar.apps.ocp.themadgrape.com:443")
+                .operationTimeout(2000, TimeUnit.MILLISECONDS)
+                .build();
+
+./pulsar-perf produce persistent://public/default/my-topic --tls-allow-insecure --service-url pulsar+ssl://sslproxy-route-pulsar.apps.ocp.themadgrape.com:443 --trust-cert-file /home/noelo/dev/noc-pulsar-client/pulsar-proxy-chain.pem
+
+
+./pulsar-client produce persistent://public/default/my-topic --tls-allow-insecure --service-url pulsar+ssl://sslproxy-route-pulsar.apps.ocp.themadgrape.com:443 --trust-cert-file /home/noelo/dev/noc-pulsar-client/pulsar-proxy-chain.pem
+
+
+
+java -cp '/home/noelo/tools/pulsar/apache-pulsar-2.9.1/conf:::/home/noelo/tools/pulsar/apache-pulsar-2.9.1/lib/*:' -Dlog4j.configurationFile=log4j2.yaml -Djava.net.preferIPv4Stack=true -Xmx128m -XX:MaxDirectMemorySize=128m -client -Dio.netty.leakDetectionLevel=disabled -Dpulsar.log.dir=/home/noelo/tools/pulsar/apache-pulsar-2.9.1/logs  -Dpulsar.log.level=debug -Dpulsar.log.root.level=debug org.apache.pulsar.client.cli.PulsarClientTool /home/noelo/tools/pulsar/apache-pulsar-2.9.1/conf/client.conf produce -m 'hello c1 to c2' -n 1000 public/default/my-topic --tls-allow-insecure --service-url pulsar+ssl://sslproxy-route-pulsar.apps.ocp.themadgrape.com:443 --trust-cert-file /home/noelo/dev/noc-pulsar-client/pulsar-proxy-chain.pem
